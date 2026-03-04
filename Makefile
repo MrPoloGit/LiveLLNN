@@ -1,24 +1,26 @@
-MODEL      ?= model1
-PART       := xc7z020clg400-1
-TOP        := top
+MODEL ?= model1
+PART  := xc7z020clg400-1
+TOP   := top
+
+VIVADO_VERSION := 2024.1
 
 BUILD_DIR   := build/$(MODEL)
 SV_DIR      := data/sv/$(MODEL)
 OVERLAY_DIR := hdl/overlay
 
-# Maybe change to add tul before pynq-z2
 BOARD_REPO  := boards
-CONSTRAINTS := constraints/PYNQ-Z2.xdc
 
-VIVADO := cmd.exe /c C:\\Xilinx\\Vivado\\2024.1\\bin\\vivado.bat
+# CONSTRAINTS := constraints/PYNQ-Z2\ v1.0.xdc
+
+VIVADO := cmd.exe /c C:\\Xilinx\\Vivado\\$(VIVADO_VERSION)\\bin\\vivado.bat
 
 SV_FILES_UNIX := $(wildcard $(SV_DIR)/*.sv) $(wildcard $(OVERLAY_DIR)/*.sv)
 
-SV_FILES := $(shell for f in $(SV_FILES_UNIX); do wslpath -m $$f; done)
+SV_FILES := $(shell for f in $(SV_FILES_UNIX); do wslpath -m "$$f"; done)
 
-BUILD_WIN := $(shell wslpath -m $(BUILD_DIR))
-BOARD_REPO_WIN := $(shell wslpath -m $(BOARD_REPO))
-CONSTRAINTS_WIN := $(shell wslpath -m $(CONSTRAINTS))
+BUILD_WIN       := $(shell wslpath -m "$(BUILD_DIR)")
+BOARD_REPO_WIN  := $(shell wslpath -m "$(BOARD_REPO)")
+# CONSTRAINTS_WIN := $(shell wslpath -m "$(CONSTRAINTS)")
 
 .PHONY: help project open build clean
 
@@ -29,48 +31,54 @@ help:
 	@echo ""
 	@echo "Targets:"
 	@echo ""
-	@echo "  make project"
-	@echo "      Create Vivado project using board files inside the repo."
+	@echo "  make project [MODEL=modelX]"
+	@echo "      Create Vivado project."
 	@echo ""
-	@echo "  make open"
+	@echo "  make open [MODEL=modelX]"
 	@echo "      Open the Vivado GUI."
 	@echo ""
-	@echo "  make build"
-	@echo "      Run synthesis + implementation + bitstream generation."
+	@echo "  make build [MODEL=modelX]"
+	@echo "      Run synthesis + implementation."
 	@echo ""
 	@echo "  make clean"
 	@echo "      Delete build directory."
 	@echo ""
-	@echo "Repository Board Files:"
+	@echo "Options:"
 	@echo ""
-	@echo "  boards/pynq-z2/A.0/"
-	@echo "      board.xml"
-	@echo "      part0_pins.xml"
-	@echo "      preset.xml"
+	@echo "  MODEL=model1 (default)"
+	@echo "  VIVADO_VERSION=2024.1 (default)"
 	@echo ""
-	@echo "Example workflow:"
+	@echo "Example:"
 	@echo ""
-	@echo "  make project"
-	@echo "  make open"
-	@echo "  make build"
+	@echo "  make project MODEL=model2"
+	@echo "  make build MODEL=model2"
 	@echo ""
 
+# project:
+# 	@echo "Creating project for model: $(MODEL)"
+# 	@echo "Vivado version: $(VIVADO_VERSION)"
+# 	mkdir -p "$(BUILD_DIR)"
+# 	$(VIVADO) -mode batch -source scripts/project.tcl \
+# 		-tclargs $(TOP) $(PART) "$(BUILD_WIN)" $(SV_FILES) "$(CONSTRAINTS_WIN)" "$(BOARD_REPO_WIN)"
 project:
-	mkdir -p $(BUILD_DIR)
+	@echo "Creating project for model: $(MODEL)"
+	@echo "Vivado version: $(VIVADO_VERSION)"
+	mkdir -p "$(BUILD_DIR)"
 	$(VIVADO) -mode batch -source scripts/project.tcl \
-		-tclargs $(TOP) $(PART) "$(BUILD_WIN)" $(SV_FILES) "$(CONSTRAINTS_WIN)" "$(BOARD_REPO_WIN)"
+		-tclargs "$(TOP)" "$(PART)" "$(BUILD_WIN)" "$(BOARD_REPO_WIN)" $(SV_FILES)
 
 open:
 	@if [ ! -f "$(BUILD_DIR)/$(TOP).xpr" ]; then \
 		echo "Error: Vivado project not found."; \
 		echo "Expected: $(BUILD_DIR)/$(TOP).xpr"; \
-		echo "Run 'make project' first."; \
+		echo "Run 'make project MODEL=$(MODEL)' first."; \
 		exit 1; \
 	fi
 	$(VIVADO) "$(BUILD_WIN)/$(TOP).xpr"
 
 build:
-	mkdir -p $(BUILD_DIR)
+	@echo "Building model: $(MODEL)"
+	mkdir -p "$(BUILD_DIR)"
 	$(VIVADO) -mode batch -source scripts/build.tcl \
 		-tclargs $(TOP) "$(BUILD_WIN)"
 

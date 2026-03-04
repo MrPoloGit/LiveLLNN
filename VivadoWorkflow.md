@@ -1,6 +1,7 @@
 # Vivado Workflow
 - Download PYNQ-Z2 board files: https://www.tulembedded.com/FPGA/ProductsPYNQ-Z2.html#:~:text=Z2%20Board%20File
     - Extract and put them in `<your vivado installation>/Vivado/<version>/data/boards/board_files`
+    - If board_files doesn't exist create the folder
 - Create new Vivado project, including the hdl folder of the repo as sources
     - I'm not sure if it was necessary, but I added the constraints file: https://www.tulembedded.com/FPGA/ProductsPYNQ-Z2.html#:~:text=Z2%20Board%20File
     - I'm pretty sure it would work without it

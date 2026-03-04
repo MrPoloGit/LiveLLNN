@@ -10,15 +10,16 @@ import torch.nn.functional as F
 sys.path.append(str(Path(__file__).parent.parent))
 from lutnn.lutlayer import LUTLayer, Aggregation
 
-
 def get_args():
     parser = argparse.ArgumentParser(description="Convert LUTNN to SystemVerilog code.")
     parser.add_argument("--model", type=str, required=True, help="LUTNN model name (path stem in models/)")
     parser.add_argument("--name", type=str, help="Output SV folder name (defaults to --model)")
     return parser.parse_args()
 
+
 def create_sv_folder(path):
     Path(path).mkdir(parents=True, exist_ok=True)
+
 
 def gen_globals_file(number_of_inputs, number_of_layers, num_neurons, lut_size, outputs_per_class, output_bits, sv_path):
     with open(os.path.join(sv_path, "Globals.sv"), "w") as file:
@@ -27,9 +28,11 @@ def gen_globals_file(number_of_inputs, number_of_layers, num_neurons, lut_size, 
         file.write("// -------------------------------------------------------------------------------------\n")
         file.write("\n")
 
+
         file.write("`ifndef GLOBALS_SV\n")
         file.write("`define GLOBALS_SV\n")
         file.write("\n")
+
 
         file.write("// Network configuration\n")
         file.write(f"localparam NET_INPUTS      = {number_of_inputs};\n")
@@ -38,8 +41,10 @@ def gen_globals_file(number_of_inputs, number_of_layers, num_neurons, lut_size, 
         file.write(f"localparam CLASS_OUTS      = {outputs_per_class};\n")
         file.write(f"localparam NET_OUTPUT_BITS = {output_bits};\n")
 
+
         file.write("\n")
         file.write("`endif // GLOBALS_SV\n")
+
 
 def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outputs_per_class, output_bits):
     with open(os.path.join(sv_path, "top.sv"), "w") as file:
@@ -48,29 +53,39 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
         file.write("// --------------------------------------------------------------------------------------\n")
         file.write("\n")
 
+
         file.write("`include \"Globals.sv\"\n")
         file.write("\n")
 
+
         file.write("module top (\n")
         file.write("\tinput  logic [NET_INPUTS-1:0] NET_I,\n")
-        file.write(f"\toutput logic [{output_bits-1}:0] NET_O\n")
+        file.write(f"\toutput logic [{output_bits-1}:0] NET_O,\n")
+        file.write("\tinput   logic clk,\n")
+        file.write("\tinput   logic rst,\n")
         file.write(");\n")
         file.write("\n")
 
+
         for i in range(number_of_layers):
-            file.write(f"\tlogic [L{i}_NEURONS-1:0] 			 F_L{i};\n")
+            file.write(f"\tlogic [L{i}_NEURONS-1:0]              F_L{i};\n")
+
 
         c_width = "$clog2(CLASS_OUTS+1)"
         for i in range(number_of_classes):
             file.write(f"\tlogic [{c_width}-1:0] C{i};\n")
 
+
         for i in range(number_of_classes - 2):
             file.write(f"\tlogic [{c_width}-1:0] max{i};\n")
 
+
         for i in range(number_of_classes - 1):
-            file.write(f"\tlogic 							 idx{i};\n")
+            file.write(f"\tlogic                             idx{i};\n")
+
 
         file.write("\n")
+
 
         file.write("\t// Instantiate layers\n")
         for i in range(number_of_layers):
@@ -79,9 +94,12 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
                 file.write("\t\t.in  (NET_I),\n")
             else:
                 file.write(f"\t\t.in  (F_L{i-1}),\n")
-            file.write(f"\t\t.out (F_L{i})\n")
+            file.write(f"\t\t.out (F_L{i}),\n")
+            file.write("\t\t.clk (clk),\n")
+            file.write("\t\t.rst (rst)\n")
             file.write("\t);\n")
             file.write("\n")
+
 
         # Emit a parameterized popcount function (Yosys doesn't support $countones)
         result_width = (outputs_per_class - 1).bit_length() + 1  # bits needed to hold count
@@ -97,6 +115,7 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
         file.write(f"\tendfunction\n")
         file.write("\n")
 
+
         file.write("\t// Popcount per class\n")
         for i in range(number_of_classes):
             hi = num_neurons[-1] - 1 - outputs_per_class * i
@@ -104,7 +123,10 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
             file.write(f"\tassign C{number_of_classes - i - 1} = popcount(F_L{number_of_layers - 1}[{hi}:{lo}]);\n")
 
 
+
+
         file.write("\n")
+
 
         file.write("\t// Comparator reduction chain\n")
         for i in range(number_of_classes - 1):
@@ -116,18 +138,22 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
                 file.write(f"\t\t.in1 (max{i-1}),\n")
                 file.write(f"\t\t.in2 (C{i+1}),\n")
 
+
             if i < number_of_classes - 2:
                 file.write(f"\t\t.max (max{i}),\n")
             else:
                 file.write("\t\t.max (),\n")
 
+
             file.write(f"\t\t.idx (idx{i})\n")
             file.write("\t);\n")
             file.write("\n")
 
+
         file.write("\t// Output encoding (argmax)\n")
         file.write("\talways_comb begin\n")
         file.write(f"\t\tNET_O = {output_bits}'b{'1' * output_bits};\n")
+
 
         for i in range(number_of_classes):
             binchars = f"{i:b}".zfill(output_bits)
@@ -135,10 +161,13 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
             print_idx(file, i, number_of_classes)
             file.write(f") NET_O = {output_bits}'b{binchars};\n")
 
+
         file.write("\tend\n")
         file.write("\n")
 
+
         file.write("endmodule : top\n")
+
 
 def print_idx(file, comparator, n_idx):
     for i in range(n_idx - 1):
@@ -159,6 +188,8 @@ def print_idx(file, comparator, n_idx):
                 file.write(f"idx{i} == 1'b0")
 
 
+
+
 def gen_comparator_file(sv_path):
     with open(os.path.join(sv_path, "comparator.sv"), "w") as file:
         file.write("// --------------------------------------------------------------------------------------\n")
@@ -166,8 +197,10 @@ def gen_comparator_file(sv_path):
         file.write("// --------------------------------------------------------------------------------------\n")
         file.write("\n")
 
+
         file.write("`include \"Globals.sv\"\n")
         file.write("\n")
+
 
         file.write("module comparator (\n")
         file.write("\tinput  logic [$clog2(CLASS_OUTS+1)-1:0] in1,\n")
@@ -176,6 +209,7 @@ def gen_comparator_file(sv_path):
         file.write("\toutput logic                            idx\n")
         file.write(");\n")
         file.write("\n")
+
 
         file.write("\talways_comb begin\n")
         file.write("\t\tif (in1 >= in2) begin\n")
@@ -188,7 +222,10 @@ def gen_comparator_file(sv_path):
         file.write("\tend\n")
         file.write("\n")
 
+
         file.write("endmodule : comparator\n")
+
+
 
 
 def gen_layer_header(file, layer):
@@ -197,8 +234,10 @@ def gen_layer_header(file, layer):
     file.write("// --------------------------------------------------------------------------------------\n")
     file.write("\n")
 
+
     file.write("`include \"Globals.sv\"\n")
     file.write("\n")
+
 
     file.write(f"module layer{layer} (\n")
     if layer == 0:
@@ -206,13 +245,19 @@ def gen_layer_header(file, layer):
     else:
         file.write(f"\tinput  logic [L{layer - 1}_NEURONS-1:0] in,\n")
     file.write(f"\toutput logic [L{layer}_NEURONS-1:0] out\n")
+    file.write("\tinput logic clk,\n")
+    file.write("\tinput logic rst,\n")
     file.write(");\n")
     file.write("\n")
+
 
     file.write("\t// Instantiate the neurons (LUTs)\n")
     file.write("\n")
 
+
     return file
+
+
 
 
 def process_file(layers, sv_path, num_neurons, lut_size):

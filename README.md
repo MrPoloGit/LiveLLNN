@@ -43,6 +43,15 @@ sudo apt install build-essential
 sudo apt install python3
 sudo apt install python3-pip
 sudo apt install python3.12-venv
+sudo apt install wget unzip
+
+# If you want to use sv2v
+cd /opt
+sudo wget https://github.com/zachjs/sv2v/releases/download/v0.0.13/sv2v-Linux.zip
+sudo unzip sv2v-Linux.zip
+sudo mv sv2v-Linux sv2v
+sudo ln -s /opt/sv2v/sv2v /usr/local/bin/sv2v
+cd /mnt/c/Users/<you>/Projects/LiveLLNN
 
 # Create the python environment
 python3 -m venv venv

@@ -25,42 +25,73 @@ A trained logic neural network model is parsed to extract its connectivity graph
 ### Phase 2: Run-Time Re-Programming (Zero-Synthesis Updates)
 At run-time, the hardware loads the generated bitstream. When a new model is trained or updated weights are derived offline, they are exported into a binary weight file. The SoC processor parses this file and programs the internal truth tables of the network via direct memory writes. Forward-pass inference remains purely combinational and blisteringly fast, while updating the weights across the entire network via the PS takes only a tiny fraction of a second.
 
-This paves the way for continuous, "Self-Healing" agentic systems on embedded edge devices—capable of detecting concept drift, requesting offline retrains, and hot-swapping network parameters entirely in the field without ever invoking the massive synthesis toolchain.
+This paves the way for continuous, "Self-Healing" agentic systems on embedded edge devices which are capable of detecting concept drift, requesting offline retrains, and hot-swapping network parameters entirely in the field without ever invoking the massive synthesis toolchain.
 
 
 ## Running
 
-In python environment
+### Set up
 
-Libraries
+#### Ubuntu/WSL:
+
+For just simulating and getting the HDL, use the devcontainer.
+
 ```bash
+# Installing the necessary tools
 sudo apt update
 sudo apt install build-essential
-```
+sudo apt install python3
+sudo apt install python3-pip
+sudo apt install python3.12-venv
 
-Running the models
-```bash
-python main.py --help
-python -m venv venv
+# Create the python environment
+python3 -m venv venv
 
-# Windows
-source venv/Scripts/activate
-
-# MacOS and Linux
+# Entering MacOS, WSL, and Linux
 source venv/bin/activate
 
-pip install -e .
-pip install -r requirements.txt
-python main.py --train --save --name model1 --dataset mnist --batch-size 128 -lr 0.01 --num-iterations 10000
-python main.py --load --name model1 --dataset mnist
-python main.py --load --vhdl --name model1 --dataset mnist
-python main.py --load --sv --name model1 --dataset mnist
+# Setting up the environment 
+pip3 install -e .
+pip3 install -r requirements.txt
 ```
 
-Makefile usage
+#### MacOS:
+
+Use Devcontainer.
+
+### Creating the models
+
 ```bash
-make bitstream MODEL=model1
-make clean
+# For help and list of command
+python3 main.py --help
+
+# Training a model
+python3 main.py --train --save --name model1 --dataset mnist --batch-size 128 -lr 0.01 --num-iterations 10000
+
+# Testing trained model
+python3 main.py --load --name model1 --dataset mnist
+
+# Generating HDL code
+python3 main.py --load --vhdl --name model1 --dataset mnist
+python3 main.py --load --sv --name model1 --dataset mnist
+```
+
+### Synthesizing
+
+#### Setup
+- Make sure vivado is installed.
+- Download PYNQ-Z2 board files: https://www.tulembedded.com/FPGA/ProductsPYNQ-Z2.html#:~:text=Z2%20Board%20File
+- Extract and put them in a folder in root called `board/tul/`
+- Also the constraints file in the `constraint/` folder
+
+We have set things up for a PYNQ-Z2 board, here are the [instructions](https://pynq.readthedocs.io/en/latest/getting_started/pynq_z2_setup.html) to set up the board. We are using the [LCFGLUT5T](https://docs.amd.com/r/en-US/ug953-vivado-7series-libraries/CFGLUT5) LUT for our example.
+
+```bash
+make help      # print out instructions on usage
+make project   # creates the basic project with the constraints and necessary files included
+make open      # opens the project in the vivado gui
+make bitstream # synthesize
+make clean     # cleans everything in build
 ```
 
 ## Importing LUTLayer
@@ -77,21 +108,11 @@ model = torch.nn.Sequential(
 )
 ```
 
-## Train a model
-
-`python main.py --train --save --name model1 --dataset mnist --batch-size 128 -lr 0.01 --num-iterations 10000`
-
-## Test a trained model
-
-`python main.py --load --name model1 --dataset mnist`
-
 ## Background and Citations
 
 This project is an architectural extension of the foundational LLNN concepts detailed in:
 
 [LLNN: A Scalable LUT-Based Logic Neural Network Architecture for FPGAs](https://ieeexplore.ieee.org/abstract/document/11154450)
-
-If you build upon the core LLNN functionality, please cite:
 
 ```bibtex
 @ARTICLE{11154450,
@@ -105,3 +126,5 @@ If you build upon the core LLNN functionality, please cite:
   doi={10.1109/TCSI.2025.3606054}
 }
 ```
+
+https://docs.amd.com/r/en-US/ug953-vivado-7series-libraries/CFGLUT5

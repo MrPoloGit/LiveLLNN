@@ -244,7 +244,9 @@ SV2V_DIR := data/verilog/$(MODEL)
 
 SV2V_FILES := $(patsubst $(SV_DIR)/%.sv,$(SV2V_DIR)/%.v,$(wildcard $(SV_DIR)/*.sv))
 
-.PHONY: help sv2v project open build clean
+JOBS ?= 4
+
+.PHONY: help sv2v project open build build_overlay clean
 
 help:
 	@echo ""
@@ -309,6 +311,12 @@ build:
 
 	$(VIVADO) -mode batch -source scripts/build.tcl \
 		-tclargs "$(TOP)" "$(BUILD_DIR)"
+
+build_overlay:
+	@echo "Building LLNN overlay (PYNQ-Z2)"
+
+	$(VIVADO) -mode batch -source scripts/build_overlay.tcl \
+		-tclargs "$(OVERLAY_DIR)" "$(BUILD_DIR)/overlay" "llnn_bd" "$(JOBS)"
 
 clean:
 ifdef MODEL

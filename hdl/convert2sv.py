@@ -61,8 +61,8 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
         file.write("module top (\n")
         file.write("\tinput  logic [NET_INPUTS-1:0] NET_I,\n")
         file.write(f"\toutput logic [{output_bits-1}:0] NET_O,\n")
-        file.write("\tinput   logic clk,\n")
-        file.write("\tinput   logic rst,\n")
+        file.write("\tinput  logic clk,\n")
+        file.write("\tinput  logic rst\n")
         file.write(");\n")
         file.write("\n")
 
@@ -245,8 +245,8 @@ def gen_layer_header(file, layer):
     else:
         file.write(f"\tinput  logic [L{layer - 1}_NEURONS-1:0] in,\n")
     file.write(f"\toutput logic [L{layer}_NEURONS-1:0] out\n")
-    file.write("\tinput logic clk,\n")
-    file.write("\tinput logic rst\n")
+    file.write("\tinput  logic 				  clk,\n")
+    file.write("\tinput  logic 				  rst\n")
     file.write(");\n")
     file.write("\n")
 

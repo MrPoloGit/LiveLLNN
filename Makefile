@@ -1,6 +1,6 @@
 MODEL ?= model1
 PART  := xc7z020clg400-1
-TOP   := top
+TOP   := llnn_wrapper_bd
 
 VIVADO_VERSION := 2025.2
 
@@ -20,8 +20,10 @@ REPO_ROOT_WIN := $(shell wslpath -w "$(CURDIR)")
 PROJECT_TCL_WIN := $(shell wslpath -w "$(CURDIR)/scripts/project.tcl")
 
 SV_FILES_UNIX := $(wildcard $(SV_DIR)/*.sv) $(wildcard $(OVERLAY_DIR)/*.sv)
+V_FILES_UNIX  := $(wildcard $(SV_DIR)/*.v) $(wildcard $(OVERLAY_DIR)/*.v)
+SRC_FILES_UNIX := $(SV_FILES_UNIX) $(V_FILES_UNIX)
 
-SV_FILES := $(shell for f in $(SV_FILES_UNIX); do wslpath -m "$$f"; done)
+SRC_FILES := $(shell for f in $(SRC_FILES_UNIX); do wslpath -m "$$f"; done)
 
 BUILD_WIN := $(shell wslpath -w "$(BUILD_DIR)")
 BOARD_REPO_WIN := $(shell wslpath -w "$(BOARD_REPO)")
@@ -77,7 +79,7 @@ project:
 	@echo "Vivado version: $(VIVADO_VERSION)"
 	mkdir -p "$(BUILD_DIR)"
 	$(VIVADO) -mode batch -source "$(PROJECT_TCL_WIN)" \
-		-tclargs "$(TOP)" "$(PART)" "$(BUILD_WIN)" "$(BOARD_REPO_WIN)" $(SV_FILES)
+		-tclargs "$(TOP)" "$(PART)" "$(BUILD_WIN)" "$(BOARD_REPO_WIN)" $(SRC_FILES)
 
 open:
 	@if [ ! -f "$(BUILD_DIR)/$(TOP).xpr" ]; then \

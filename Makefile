@@ -221,9 +221,6 @@
 
 
 
-
-
-
 # LINUX
 # =============================================================================
 # Vivado FPGA Build System
@@ -241,6 +238,7 @@ BOARD_REPO  := boards
 
 # Vivado executable (assumes environment already sourced)
 VIVADO ?= vivado
+CLK_FREQ_MHZ ?= 25
 
 # -----------------------------------------------------------------------------
 # Source collection
@@ -333,7 +331,7 @@ design:
 		exit 1; \
 	fi
 	$(VIVADO) -mode batch -source scripts/create_design.tcl \
-		-tclargs "$(TOP)" "$(PART)" "$(BUILD_DIR)" "$(BOARD_REPO)" $(SOURCES)
+		-tclargs "$(TOP)" "$(PART)" "$(BUILD_DIR)" "$(BOARD_REPO)" "$(CLK_FREQ_MHZ)" $(SOURCES)
 
 open:
 	@if [ ! -f "$(BUILD_DIR)/$(PROJECT_NAME).xpr" ]; then \

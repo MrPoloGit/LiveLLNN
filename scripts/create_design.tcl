@@ -1,8 +1,9 @@
-set top        [lindex $argv 0]
-set part       [lindex $argv 1]
-set build_dir  [lindex $argv 2]
-set board_repo [lindex $argv 3]
-set sources    [lrange $argv 4 end]
+set top          [lindex $argv 0]
+set part         [lindex $argv 1]
+set build_dir    [lindex $argv 2]
+set board_repo   [lindex $argv 3]
+set clk_freq_mhz [lindex $argv 4]
+set sources      [lrange $argv 5 end]
 
 # Normalize incoming paths
 set build_dir  [string map {\\ /} $build_dir]
@@ -15,6 +16,9 @@ set repo_root  [file dirname $script_dir]
 # Fixed repo-local constraints
 set constraints [file normalize [file join $repo_root constraints "PYNQ-Z2 v1.0.xdc"]]
 set constraints [string map {\\ /} $constraints]
+
+# Calculate Clock Period
+set clk_period_ns [expr {1000.0 / $clk_freq_mhz}]
 
 # Project / BD naming
 set proj_name "llnn_wrapper_bd"
@@ -29,6 +33,8 @@ puts "Constraints       : $constraints"
 puts "Project name      : $proj_name"
 puts "BD name           : $bd_name"
 puts "Wrapper module    : $wrapper_module"
+puts "Clock frequency   : ${clk_freq_mhz} MHz"
+puts "Clock period      : $clk_period_ns ns"
 
 if {![file exists $constraints]} {
     error "Constraint file not found: $constraints"
@@ -92,8 +98,8 @@ set_property -dict [list \
     CONFIG.PCW_USE_M_AXI_GP0 {1} \
     CONFIG.PCW_EN_CLK0_PORT {1} \
     CONFIG.PCW_FCLK0_PERIPHERAL_CLKSRC {IO PLL} \
-    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ {25.000000} \
-    CONFIG.PCW_M_AXI_GP0_FREQMHZ {25} \
+    CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ ${clk_freq_mhz} \
+    CONFIG.PCW_M_AXI_GP0_FREQMHZ ${clk_freq_mhz} \
     CONFIG.PCW_M_AXI_GP0_ENABLE_STATIC_REMAP {0} \
 ] [get_bd_cells processing_system7_0]
 
@@ -101,8 +107,8 @@ set_property -dict [list \
 create_bd_cell -type module -reference $wrapper_module llnn_wrapper_bd_0
 
 # Processor reset block
-# create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset rst_ps7_0_100M
-create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset rst_ps7_0_25M
+set rst_name "rst_ps7_0_${clk_freq_mhz}M"
+create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset $rst_name
 
 # ------------------------------------------------------------------------------
 # Clock / reset wiring
@@ -117,9 +123,7 @@ connect_bd_net \
 
 connect_bd_net \
     [get_bd_pins processing_system7_0/FCLK_CLK0] \
-    [get_bd_pins rst_ps7_0_25M/slowest_sync_clk]
-
-# [get_bd_pins rst_ps7_0_100M/slowest_sync_clk]
+    [get_bd_pins $rst_name/slowest_sync_clk]
 
 connect_bd_net \
     [get_bd_pins processing_system7_0/FCLK_CLK0] \
@@ -128,17 +132,12 @@ connect_bd_net \
 # PS reset into proc_sys_reset
 connect_bd_net \
     [get_bd_pins processing_system7_0/FCLK_RESET0_N] \
-    [get_bd_pins rst_ps7_0_25M/ext_reset_in]
-
-# [get_bd_pins rst_ps7_0_100M/ext_reset_in]
+    [get_bd_pins $rst_name/ext_reset_in]
 
 # IMPORTANT: from your working log, rst_n must connect to peripheral_aresetn
 connect_bd_net \
-    [get_bd_pins rst_ps7_0_25M/peripheral_aresetn] \
+    [get_bd_pins $rst_name/peripheral_aresetn] \
     [get_bd_pins llnn_wrapper_bd_0/rst_n]
-
-# [get_bd_pins rst_ps7_0_100M/peripheral_aresetn] \
-
 
 # ------------------------------------------------------------------------------
 # AXI connection
@@ -157,11 +156,7 @@ apply_bd_automation -rule xilinx.com:bd_rule:axi4 \
     } \
     [get_bd_intf_pins llnn_wrapper_bd_0/S_AXI]
 
-# Optional: lock GP0 clock frequency to 100 MHz to match common PYNQ flow
-# catch {
-#     set_property CONFIG.PCW_M_AXI_GP0_FREQMHZ {100} [get_bd_cells processing_system7_0]
-# }
-puts "FCLK_CLK0 target frequency set to 25 MHz"
+puts "FCLK_CLK0 target frequency set to ${clk_freq_mhz} MHz"
 puts "PS7 FPGA0 freq    : [get_property CONFIG.PCW_FPGA0_PERIPHERAL_FREQMHZ [get_bd_cells processing_system7_0]]"
 puts "M_AXI_GP0 freq    : [get_property CONFIG.PCW_M_AXI_GP0_FREQMHZ [get_bd_cells processing_system7_0]]"
 

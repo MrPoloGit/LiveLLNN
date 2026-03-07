@@ -57,11 +57,6 @@ module llnn_wrapper (
     top u_net (
         .NET_I (net_i),
         .NET_O (net_o)
-<<<<<<< HEAD
-        // .clk   (clk),
-	    // .rst   (rst)
-=======
->>>>>>> ab4e7670beab219267c096247434cfe254c57475
     );
 
 endmodule

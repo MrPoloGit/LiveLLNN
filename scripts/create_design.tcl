@@ -21,7 +21,7 @@ set constraints [string map {\\ /} $constraints]
 set clk_period_ns [expr {1000.0 / $clk_freq_mhz}]
 
 # Project / BD naming
-set proj_name "llnn_wrapper_bd"
+set proj_name "top"
 set bd_name   "design_1"
 set wrapper_module "llnn_wrapper_bd"
 

@@ -56,7 +56,9 @@ module llnn_wrapper (
     // Inference network
     top u_net (
         .NET_I (net_i),
-        .NET_O (net_o)
+        .NET_O (net_o),
+        .clk   (clk),
+        .rst   (~rst_n)
     );
 
 endmodule

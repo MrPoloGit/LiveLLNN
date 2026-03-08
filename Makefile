@@ -241,6 +241,48 @@ VIVADO ?= vivado
 CLK_FREQ_MHZ ?= 25
 
 # -----------------------------------------------------------------------------
+# Python Setting
+# -----------------------------------------------------------------------------
+PYTHON ?= python3
+
+DATASET ?= mnist20x20
+
+# Training parameters
+SEED ?= 0
+BATCH_SIZE ?= 128
+LR ?= 0.01
+TAU ?= 1.0
+ITER ?= 10000
+EVAL_FREQ ?= 1000
+
+# Network architecture
+CONNECTIONS ?= unique
+LUTS_PER_LAYER ?= 2000
+NUM_LAYERS ?= 2
+LUT_SIZE ?= 2
+
+PY_TRAIN_ARGS = \
+	--train \
+	--save \
+	--name $(MODEL) \
+	--dataset $(DATASET) \
+	--seed $(SEED) \
+	--batch-size $(BATCH_SIZE) \
+	--learning-rate $(LR) \
+	--tau $(TAU) \
+	--num-iterations $(ITER) \
+	--eval-freq $(EVAL_FREQ) \
+	--connections $(CONNECTIONS) \
+	--luts_per_layer $(LUTS_PER_LAYER) \
+	--num_layers $(NUM_LAYERS) \
+	--lut_size $(LUT_SIZE)
+
+PY_LOAD_ARGS = \
+	--load \
+	--name $(MODEL) \
+	--dataset $(DATASET)
+
+# -----------------------------------------------------------------------------
 # Source collection
 # -----------------------------------------------------------------------------
 MODEL_SV_SOURCES    := $(sort $(wildcard $(SV_DIR)/*.sv))
@@ -259,7 +301,7 @@ SV2V_FILES := $(patsubst $(SV_DIR)/%.sv,$(SV2V_DIR)/%.v,$(SV2V_INPUT))
 
 JOBS ?= 4
 
-.PHONY: help print-sources sv2v project design open build build_overlay clean
+.PHONY: help py-help train test gen-vhdl gen-sv print-sources sv2v project design open build build_overlay clean-model clean-data clean-py clean
 
 help:
 	@echo ""
@@ -267,6 +309,23 @@ help:
 	@echo "========================"
 	@echo ""
 	@echo "Targets:"
+	@echo ""
+	@echo "Machine Learning / HDL Generation:"
+	@echo ""
+	@echo "  make py-help"
+	@echo "      Show Python CLI help."
+	@echo ""
+	@echo "  make train MODEL=model1"
+	@echo "      Train LUTNN model."
+	@echo ""
+	@echo "  make test MODEL=model1"
+	@echo "      Evaluate trained model."
+	@echo ""
+	@echo "  make gen-sv MODEL=model1"
+	@echo "      Generate SystemVerilog from trained model."
+	@echo ""
+	@echo "  make gen-vhdl MODEL=model1"
+	@echo "      Generate VHDL from trained model."
 	@echo ""
 	@echo "  make print-sources [MODEL=modelX]"
 	@echo "      Print the complete resolved source list."
@@ -292,6 +351,25 @@ help:
 	@echo "  make clean [MODEL=modelX]"
 	@echo "      Delete a specific model project, or all build outputs."
 	@echo ""
+
+py-help:
+	$(PYTHON) main.py --help
+
+train:
+	@echo "Training model: $(MODEL)"
+	$(PYTHON) main.py $(PY_TRAIN_ARGS)
+
+test:
+	@echo "Testing model: $(MODEL)"
+	$(PYTHON) main.py $(PY_LOAD_ARGS)
+
+gen-vhdl:
+	@echo "Generating VHDL for $(MODEL)"
+	$(PYTHON) main.py $(PY_LOAD_ARGS) --vhdl
+
+gen-sv:
+	@echo "Generating SystemVerilog for $(MODEL)"
+	$(PYTHON) main.py $(PY_LOAD_ARGS) --sv
 
 print-sources:
 	@echo "MODEL               = $(MODEL)"
@@ -357,6 +435,15 @@ build_overlay:
 	@echo "Building LLNN overlay (PYNQ-Z2)"
 	$(VIVADO) -mode batch -source scripts/build_overlay.tcl \
 		-tclargs "$(OVERLAY_DIR)" "$(BUILD_DIR)/overlay" "llnn_bd" "$(JOBS)" "$(SV_DIR)"
+
+clean-model:
+	$(PYTHON) main.py --clean models --name $(MODEL)
+
+clean-data:
+	$(PYTHON) main.py --clean data
+
+clean-py:
+	$(PYTHON) main.py --clean all
 
 clean:
 ifdef MODEL

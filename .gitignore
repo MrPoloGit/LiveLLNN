@@ -19,9 +19,8 @@ vivado.log
 vivado_pid*.str
 .Xil/
 
-
-# Temporary?
 boards/
 constraints/
 NA/
 .nfs*
+sim.out

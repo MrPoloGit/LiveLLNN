@@ -60,15 +60,15 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
 
         file.write("module top (\n")
         file.write("\tinput  logic [NET_INPUTS-1:0] NET_I,\n")
-        file.write(f"\toutput logic [{output_bits-1}:0] NET_O\n")
-        # file.write("\tinput  logic clk,\n")
-        # file.write("\tinput  logic rst\n")
+        file.write(f"\toutput logic [{output_bits-1}:0] NET_O,\n")
+        file.write("\tinput  logic clk,\n")
+        file.write("\tinput  logic rst\n")
         file.write(");\n")
         file.write("\n")
 
 
         for i in range(number_of_layers):
-            file.write(f"\tlogic [L{i}_NEURONS-1:0]              F_L{i};\n")
+            file.write(f"\tlogic [L{i}_NEURONS-1:0]           F_L{i};\n")
 
 
         c_width = "$clog2(CLASS_OUTS+1)"
@@ -81,7 +81,7 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
 
 
         for i in range(number_of_classes - 1):
-            file.write(f"\tlogic                             idx{i};\n")
+            file.write(f"\tlogic                            idx{i};\n")
 
 
         file.write("\n")
@@ -94,9 +94,9 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
                 file.write("\t\t.in  (NET_I),\n")
             else:
                 file.write(f"\t\t.in  (F_L{i-1}),\n")
-            file.write(f"\t\t.out (F_L{i})\n")
-            # file.write("\t\t.clk (clk),\n")
-            # file.write("\t\t.rst (rst)\n")
+            file.write(f"\t\t.out (F_L{i}),\n")
+            file.write("\t\t.clk (clk),\n")
+            file.write("\t\t.rst (rst)\n")
             file.write("\t);\n")
             file.write("\n")
 
@@ -163,8 +163,23 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes, num_neurons, outp
 
 
         file.write("\tend\n")
-        file.write("\n")
+        file.write("\n\n")
 
+
+        # file.write("\t// Handling the signal and hand off\n")
+        # file.write("\tlogic in_ready_o, out_ready_i, in_valid_i, out_valid_o;\n")
+        # file.write("\tlogic [$clog2({number_of_layers})+1:0] counter_d, counter_q;\n\n")
+        # file.write("\talways_ff @(posedge clk) begin\n")
+        # file.write("\t\tif (rst) begin\n")
+        # file.write("\t\t\tcounter_d <= 0;\n")
+        # file.write("\t\tend else begin\n")
+        # file.write("\t\t\tcounter_q <= counter_d;\n")
+        # file.write("\t\tend\n")
+        # file.write("\tend\n\n")
+
+        # file.write("\talways_comb begin\n")
+        # file.write("\t\tif (counter_q > ({number_of_layers}+2)) begin\n")
+        # file.write("")
 
         file.write("endmodule : top\n")
 
@@ -244,9 +259,9 @@ def gen_layer_header(file, layer):
         file.write("\tinput  logic [NET_INPUTS-1:0] in,\n")
     else:
         file.write(f"\tinput  logic [L{layer - 1}_NEURONS-1:0] in,\n")
-    file.write(f"\toutput logic [L{layer}_NEURONS-1:0] out\n")
-    # file.write("\tinput  logic 				  clk,\n")
-    # file.write("\tinput  logic 				  rst\n")
+    file.write(f"\toutput logic [L{layer}_NEURONS-1:0] out,\n")
+    file.write("\tinput  logic 				  clk,\n")
+    file.write("\tinput  logic 				  rst\n")
     file.write(");\n")
     file.write("\n")
 
@@ -271,6 +286,7 @@ def process_file(layers, sv_path, num_neurons, lut_size):
                 file.write(f"\t// Neuron {neuron}\n")
                 file.write(f"\tlogic [{lut_size[l]-1}:0] lut_in_{neuron};\n")
                 file.write(f"\tlogic lut_out_{neuron};\n")
+                # file.write(f"\tlogic lut_out_{neuron}_d, lut_out_{neuron}_q;\n")
 
                 for i in range(lut_size[l]):
                     src = indices[i][neuron]
@@ -283,12 +299,24 @@ def process_file(layers, sv_path, num_neurons, lut_size):
                 for k in range(2 ** lut_size[l]):
                     bit = (table >> k) & 1
                     file.write(f"\t\t\t{lut_size[l]}'d{k}: lut_out_{neuron} = 1'b{bit};\n")
+                    # file.write(f"\t\t\t{lut_size[l]}'d{k}: lut_out_{neuron}_d = 1'b{bit};\n")
 
                 file.write(f"\t\t\tdefault: lut_out_{neuron} = 1'b0;\n")
+                # file.write(f"\t\t\tdefault: lut_out_{neuron}_d = 1'b0;\n")
                 file.write("\t\tendcase\n")
                 file.write("\tend\n")
 
+                # ALWAYS_FF
+                # file.write("\talways_ff @(posedge clk) begin\n")
+                # file.write("\t\tif (rst) begin\n")
+                # file.write("\t\t\tlut_out_{neuron}_q <= 0;\n")
+                # file.write("\t\tend else begin\n")
+                # file.write("\t\t\tlut_out_{neuron}_q <= lut_out_{neuron}_d;\n")
+                # file.write("\t\tend\n")
+                # file.write("\tend\n")
+
                 file.write(f"\tassign out[{neuron}] = lut_out_{neuron};\n")
+                # file.write(f"\tassign out[{neuron}] = lut_out_{neuron}_q;\n")
                 file.write("\n")
 
             file.write(f"endmodule : layer{l}\n")
@@ -359,14 +387,3 @@ def get_model_params(model):
             number_of_classes = layer.num_classes
     number_of_layers = len(num_neurons)
     return number_of_layers, num_neurons, lut_size, number_of_inputs, number_of_classes
-
-# if __name__ == "__main__":
-#     args = get_args()
-#     if args.name is None:
-#         args.name = args.model
-
-#     model_path = Path("models") / f"{args.model}.pth"
-#     model = torch.load(model_path, weights_only=False)
-
-#     out_dir = gen_sv_code(model, args.name)
-#     print(f"[convert2sv] Wrote SystemVerilog to: {out_dir}")

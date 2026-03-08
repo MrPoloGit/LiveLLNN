@@ -4,12 +4,12 @@
 // This is a sanity-check design to verify the CFGLUT5 primitive works on
 // the PYNQ-Z2 before building the full 1512-gate overlay.
 //
-// AXI Address Map (via axi_lut_ctrl):
+// AXI Address Map (via axi_lut_ctrl, 64KB):
 //   0x0000       : Gate 0 truth table (write 32-bit INIT value)
-//   0x2000       : STATUS (R) — bit 0 = cfg_busy
-//   0x2004       : TOTAL_GATES (R) — returns 1
-//   0x3000       : NET_I input register (only bits [4:0] used)
-//   0x3004       : NET_O output register (R) — bit 0 = LUT output
+//   0x8000       : STATUS (R) — bit 0 = cfg_busy
+//   0x8004       : TOTAL_GATES (R) — returns 1
+//   0x9000       : NET_I input register (only bits [4:0] used)
+//   0x9004       : NET_O output register (R) — bit 0 = LUT output
 // -------------------------------------------------------------------------------------
 
 module softlut5_test_wrapper (
@@ -53,7 +53,7 @@ module softlut5_test_wrapper (
         .TOTAL_GATES (TOTAL_GATES),
         .NET_INPUTS  (NET_INPUTS),
         .NET_OUTPUTS (NET_OUTPUTS),
-        .ADDR_W      (14),
+        .ADDR_W      (16),
         .DATA_W      (32)
     ) u_axi (
         .S_AXI_ACLK    (clk),
@@ -90,6 +90,7 @@ module softlut5_test_wrapper (
 
     logic cfg_out_unused;
 
+    (* dont_touch = "true" *)
     SoftLUT5 u_lut (
         .clk      (clk),
         .lut_in   (net_i),

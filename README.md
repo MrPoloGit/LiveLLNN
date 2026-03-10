@@ -27,62 +27,46 @@ At run-time, the hardware loads the generated bitstream. When a new model is tra
 
 This paves the way for continuous system on embedded edge devices which are capable of detecting concept drift, requesting offline retrains, and hot-swapping network parameters entirely in the field without ever invoking the massive synthesis toolchain.
 
-## Running
-
-### Set up
-
-#### Ubuntu/WSL:
-
-For just simulating and getting the HDL, use the devcontainer.
-
-```bash
-# Installing the necessary tools
-sudo apt update
-sudo apt install build-essential
-sudo apt install python3
-sudo apt install python3-pip
-sudo apt install python3.12-venv
-sudo apt install wget unzip
-
-# If you want to use sv2v
-cd /opt
-sudo wget https://github.com/zachjs/sv2v/releases/download/v0.0.13/sv2v-Linux.zip
-sudo unzip sv2v-Linux.zip
-sudo mv sv2v-Linux sv2v
-sudo ln -s /opt/sv2v/sv2v /usr/local/bin/sv2v
-cd /mnt/c/Users/<you>/Projects/LiveLLNN
-
-# Create the python environment
-python3 -m venv venv
-
-# Entering MacOS, WSL, and Linux
-source venv/bin/activate
-
-# Setting up the environment 
-pip3 install -e .
-pip3 install -r requirements.txt
-```
-
-#### MacOS:
-
-Use Devcontainer.
-
 ### Creating the models
 
+The LiveLLNN project supports two distinct hardware generation flows. Both start from the same PyTorch models but diverge significantly at the HDL generation stage.
+
+#### Flow 1: Static LLNN (Original)
+*Note: This flow bakes the truth tables directly into the static `case` statements of the generated HDL. Any change to the model requires a full Vivado re-synthesis.*
+This flow is useful for putting the original Static LLNN architecture directly onto the PYNQ board.
+
 ```bash
-# For help and list of command
-python3 main.py --help
+# 1. Train a static model
+python main.py --train --save --name model_static --dataset mnist20x20 -s 5 --num-iterations 15000
 
-# Training a model
-python3 main.py --train --save --name model1 --dataset mnist20x20 --batch-size 128 -lr 0.01 --num-iterations 10000
+# 2. Test the trained model
+python main.py --load --name model_static --dataset mnist20x20
 
-# Testing trained model
-python3 main.py --load --name model1 --dataset mnist20x20
-
-# Generating HDL code
-python3 main.py --load --vhdl --name model1 --dataset mnist20x20
-python3 main.py --load --sv --name model1 --dataset mnist20x20
+# 3. Generate the static HDL code (SV or VHDL)
+python main.py --load --sv --name model_static --dataset mnist20x20
 ```
+Once step 3 is complete, you use `make build_overlay MODEL=model_static` to synthesize the static bitstream.
+
+#### Flow 2: Reconfigurable LLNN (New)
+*Note: This flow extracts the connectivity topological graph of a base model to generate a fabric of SoftLUT5 cells. Truth tables are exported as binaries to be hot-swapped over an AXI memory map at runtime, completely bypassing Vivado re-synthesis!*
+
+To demonstrate hardware persistence and run-time orientation hot-swapping:
+
+```bash
+# 1. Train the base model on standard MNIST and EXPORT its wiring graph
+python main.py --train --save --name model_base --dataset mnist20x20 -s 5 --num-iterations 15000 --export-wiring wiring/topo.json
+
+# 2. Train a second model on rotated MNIST, explicitly LOADING the base wiring graph
+python main.py --train --save --name model_rot --dataset mnist20x20_rotated -s 5 --num-iterations 15000 --wiring wiring/topo.json
+
+# 3. Generate the Reconfigurable Overlay HDL (Only ever needs to be done once for model_base)
+python hdl/generate_overlay.py --model model_base
+
+# 4. Extract the software weights for both models
+python scripts/extract_weights.py --model model_base
+python scripts/extract_weights.py --model model_rot
+```
+Once step 3 is complete, you use `make build_reconfig MODEL=model_base` to synthesize the static bitstream. Once deployed to the PYNQ board, you can dynamically load the `weights.json` (or `weights.bin`) for either model into the PS and swap between recognizing standard and rotated MNIST in sub-milliseconds without touching Vivado!
 
 ### Synthesizing
 

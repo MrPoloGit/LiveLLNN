@@ -5,8 +5,13 @@ PYNQ_IP="${PYNQ_IP:-192.168.0.13}"
 PYNQ_USER="${PYNQ_USER:-xilinx}"
 REMOTE_DIR="${REMOTE_DIR:-/home/xilinx}"
 MODEL="${MODEL:-model1}"
-MODEL_DIR="${MODEL_DIR:-data/sv/${MODEL}_soft}"
-BUILD_DIR="${BUILD_DIR:-build/${MODEL}_soft/vivado}"
+if [[ "$MODEL" == *_soft ]]; then
+    SOFT_MODEL="$MODEL"
+else
+    SOFT_MODEL="${MODEL}_soft"
+fi
+MODEL_DIR="${MODEL_DIR:-data/sv/${SOFT_MODEL}}"
+BUILD_DIR="${BUILD_DIR:-build/${SOFT_MODEL}/vivado}"
 REMOTE_BASENAME="${REMOTE_BASENAME:-actual_llnn}"
 
 # ---- HELPERS ----

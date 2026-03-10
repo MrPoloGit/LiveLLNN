@@ -79,7 +79,7 @@ SV2V_DIR   := data/verilog/$(MODEL)
 SV2V_INPUT := $(filter-out $(SV_DIR)/Globals.sv,$(MODEL_SV_SOURCES))
 SV2V_FILES := $(patsubst $(SV_DIR)/%.sv,$(SV2V_DIR)/%.v,$(SV2V_INPUT))
 
-.PHONY: help print-sources sv2v project design open open_softlut build build_overlay softlut_check softlut_design softlut_build softlut_generate softlut_extract softlut_full clean
+.PHONY: help print-sources sv2v project design open open_softlut build build_overlay softlut_check softlut_sync_lib softlut_design softlut_build softlut_generate softlut_extract softlut_full clean
 
 help:
 	@echo ""
@@ -234,7 +234,12 @@ softlut_check:
 	}
 	@echo "SoftLUT source directory looks valid."
 
-softlut_build: softlut_check
+softlut_sync_lib:
+	@echo "Syncing canonical SoftLUT RTL into $(SOFTLUT_SRC_DIR)"
+	@cp -f "$(OVERLAY_DIR)/SoftLUT5.sv" "$(SOFTLUT_SRC_DIR)/SoftLUT5.sv"
+	@cp -f "$(OVERLAY_DIR)/axi_lut_ctrl.sv" "$(SOFTLUT_SRC_DIR)/axi_lut_ctrl.sv"
+
+softlut_build: softlut_check softlut_sync_lib
 	@echo "Building SoftLUT overlay from $(SOFTLUT_SRC_DIR)"
 	@mkdir -p "$(SOFTLUT_BUILD_DIR)"
 	$(VIVADO) -mode batch -source "$(SOFT_BUILD_TCL_WIN)" \

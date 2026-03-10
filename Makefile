@@ -16,11 +16,18 @@ BOARD_REPO  := boards
 # -----------------------------------------------------------------------------
 # SoftLUT flow configuration
 # -----------------------------------------------------------------------------
+ifneq (,$(filter %_soft,$(MODEL)))
+SOFTLUT_NAME ?= $(MODEL)
+SOFTLUT_MODEL ?= $(patsubst %_soft,%,$(MODEL))
+else
 SOFTLUT_NAME ?= $(MODEL)_soft
+SOFTLUT_MODEL ?= $(MODEL)
+endif
 SOFTLUT_SRC_DIR ?= data/sv/$(SOFTLUT_NAME)
 SOFTLUT_GEN_DIR ?= data/overlay/$(SOFTLUT_NAME)
 SOFTLUT_BUILD_DIR ?= build/$(SOFTLUT_NAME)/vivado
 SOFTLUT_BD_NAME ?= llnn_bd
+SOFTLUT_PROJECT_XPR := $(SOFTLUT_BUILD_DIR)/llnn_overlay.xpr
 
 VIVADO_VERSION := 2025.2
 VIVADO_XILINX  := C:\\Xilinx\\Vivado\\$(VIVADO_VERSION)\\bin\\vivado.bat
@@ -53,6 +60,7 @@ OVERLAY_BUILD_WIN := $(shell wslpath -m "$(CURDIR)/$(BUILD_DIR)/overlay")
 SOFTLUT_SRC_WIN   := $(shell wslpath -m "$(CURDIR)/$(SOFTLUT_SRC_DIR)")
 SOFTLUT_GEN_WIN   := $(shell wslpath -m "$(CURDIR)/$(SOFTLUT_GEN_DIR)")
 SOFTLUT_BUILD_WIN := $(shell wslpath -m "$(CURDIR)/$(SOFTLUT_BUILD_DIR)")
+SOFTLUT_XPR_WIN   := $(shell wslpath -m "$(CURDIR)/$(SOFTLUT_PROJECT_XPR)")
 
 # -----------------------------------------------------------------------------
 # Source collection
@@ -71,7 +79,7 @@ SV2V_DIR   := data/verilog/$(MODEL)
 SV2V_INPUT := $(filter-out $(SV_DIR)/Globals.sv,$(MODEL_SV_SOURCES))
 SV2V_FILES := $(patsubst $(SV_DIR)/%.sv,$(SV2V_DIR)/%.v,$(SV2V_INPUT))
 
-.PHONY: help print-sources sv2v project design open build build_overlay softlut_check softlut_design softlut_build softlut_generate softlut_extract softlut_full clean
+.PHONY: help print-sources sv2v project design open open_softlut build build_overlay softlut_check softlut_design softlut_build softlut_generate softlut_extract softlut_full clean
 
 help:
 	@echo ""
@@ -111,6 +119,9 @@ help:
 	@echo "  make softlut_full [MODEL=modelX]"
 	@echo "      Generate SoftLUT RTL + weights and run Vivado build end-to-end."
 	@echo "      Uses hdl/generate_overlay.py + scripts/extract_weights.py + hdl/build_overlay.tcl."
+	@echo ""
+	@echo "  make open_softlut [MODEL=modelX or modelX_soft]"
+	@echo "      Open SoftLUT Vivado project: build/<soft_name>/vivado/llnn_overlay.xpr."
 	@echo ""
 	@echo "  make clean [MODEL=modelX]"
 	@echo "      Delete a specific model project, or all build outputs."
@@ -161,9 +172,19 @@ open:
 		echo "Error: Vivado project not found."; \
 		echo "Expected: $(BUILD_DIR)/$(PROJECT_NAME).xpr"; \
 		echo "Run 'make project MODEL=$(MODEL)' first."; \
+		echo "For SoftLUT overlays, use: make open_softlut MODEL=$(MODEL)"; \
 		exit 1; \
 	fi
 	$(VIVADO) "$(PROJECT_XPR_WIN)"
+
+open_softlut:
+	@if [ ! -f "$(SOFTLUT_PROJECT_XPR)" ]; then \
+		echo "Error: SoftLUT Vivado project not found."; \
+		echo "Expected: $(SOFTLUT_PROJECT_XPR)"; \
+		echo "Run 'make softlut_design MODEL=$(MODEL)' first."; \
+		exit 1; \
+	fi
+	$(VIVADO) "$(SOFTLUT_XPR_WIN)"
 
 build:
 	@echo "Building model: $(MODEL)"
@@ -228,12 +249,12 @@ softlut_build: softlut_check
 softlut_design: softlut_build
 
 softlut_generate:
-	@echo "Generating SoftLUT RTL from model: $(MODEL) -> $(SOFTLUT_GEN_DIR)"
-	$(PYTHON) hdl/generate_overlay.py --model "$(MODEL)" --name "$(SOFTLUT_NAME)"
+	@echo "Generating SoftLUT RTL from model: $(SOFTLUT_MODEL) -> $(SOFTLUT_GEN_DIR)"
+	$(PYTHON) hdl/generate_overlay.py --model "$(SOFTLUT_MODEL)" --name "$(SOFTLUT_NAME)"
 
 softlut_extract:
-	@echo "Extracting SoftLUT weights from model: $(MODEL) -> $(SOFTLUT_GEN_DIR)"
-	$(PYTHON) scripts/extract_weights.py --model "$(MODEL)" --name "$(SOFTLUT_NAME)"
+	@echo "Extracting SoftLUT weights from model: $(SOFTLUT_MODEL) -> $(SOFTLUT_GEN_DIR)"
+	$(PYTHON) scripts/extract_weights.py --model "$(SOFTLUT_MODEL)" --name "$(SOFTLUT_NAME)"
 
 softlut_full: softlut_generate softlut_extract
 	@echo "Running full SoftLUT Vivado build from generated dir: $(SOFTLUT_GEN_DIR)"

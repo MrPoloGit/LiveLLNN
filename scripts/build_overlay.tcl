@@ -16,7 +16,7 @@
 
 set part       "xc7z020clg400-1"
 set board_part "tul.com.tw:pynq-z2:part0:1.0"
-set axi_range  "16K"
+set axi_range  "64K"
 
 set module_ref "llnn_wrapper_bd"
 set instance   "llnn_wrapper_bd_0"

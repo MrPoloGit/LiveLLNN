@@ -90,7 +90,6 @@ module softlut5_test_wrapper (
 
     logic cfg_out_unused;
 
-    (* dont_touch = "true" *)
     SoftLUT5 u_lut (
         .clk      (clk),
         .lut_in   (net_i),

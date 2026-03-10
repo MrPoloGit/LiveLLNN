@@ -9,7 +9,6 @@
 //   - cfg_out carries the displaced bit (for optional daisy-chaining)
 // -------------------------------------------------------------------------------------
 
-(* dont_touch = "true", keep_hierarchy = "yes" *)
 module SoftLUT5 (
     input logic clk,
 
@@ -23,8 +22,7 @@ module SoftLUT5 (
     output logic cfg_out
 );
 
-  // Truth table register (Vivado should infer this as distributed RAM / LUTRAM)
-  (* dont_touch = "true" *)
+  // Truth table register (Vivado infers as distributed RAM / LUTRAM)
   logic [31:0] init_reg = 32'hDEAD_BEEF;
 
   // Combinational LUT lookup

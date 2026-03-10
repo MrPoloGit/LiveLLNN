@@ -1,10 +1,8 @@
 // llnn_wrapper_bd.v — thin Verilog shell for Block Design Module Reference
-// Wraps the SystemVerilog llnn_wrapper so Vivado can reference it in block designs.
-// AXI address width = 16 bits (64KB space for gate programming + I/O).
 module llnn_wrapper_bd (
     input         clk,
     input         rst_n,
-    input  [15:0] S_AXI_AWADDR,
+    input  [13:0] S_AXI_AWADDR,
     input         S_AXI_AWVALID,
     output        S_AXI_AWREADY,
     input  [31:0] S_AXI_WDATA,
@@ -14,7 +12,7 @@ module llnn_wrapper_bd (
     output [1:0]  S_AXI_BRESP,
     output        S_AXI_BVALID,
     input         S_AXI_BREADY,
-    input  [15:0] S_AXI_ARADDR,
+    input  [13:0] S_AXI_ARADDR,
     input         S_AXI_ARVALID,
     output        S_AXI_ARREADY,
     output [31:0] S_AXI_RDATA,

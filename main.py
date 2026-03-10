@@ -48,6 +48,12 @@ def get_args():
     parser.add_argument('--train', action='store_true', help='Train model.')
     parser.add_argument('--load', action='store_true', help='Load model')
     parser.add_argument('--infer_time', action='store_true', help='Measure inference time')
+
+    # Fixed-wiring for reconfigurable overlay
+    parser.add_argument('--export-wiring', type=str, default=None,
+                        help='Export connectivity to JSON file after model creation (e.g. wiring/topology.json)')
+    parser.add_argument('--wiring', type=str, default=None,
+                        help='Load frozen wiring from JSON file (train with same topology as another model)')
     return parser.parse_args()
 
 
@@ -232,7 +238,13 @@ if __name__ == "__main__":
             weights_only=False
         )
     else:
-        model = LUTNN(args.luts_per_layer, args.num_layers, args.lut_size, input_dim_dataset, num_classes, device, tau=args.tau)
+        model = LUTNN(args.luts_per_layer, args.num_layers, args.lut_size, input_dim_dataset, num_classes,
+                      device, tau=args.tau, wiring_file=args.wiring)
+
+    # Export wiring if requested (before training, so the topology is captured)
+    if args.export_wiring:
+        model.export_wiring(args.export_wiring)
+
     if args.train:
         model = train(model, train_loader, test_loader, args, device)
     else:

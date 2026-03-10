@@ -354,9 +354,15 @@ build:
 		-tclargs "$(TOP)" "$(BUILD_DIR)"
 
 build_overlay:
-	@echo "Building LLNN overlay (PYNQ-Z2)"
+	@echo "Building LLNN overlay (PYNQ-Z2) — static"
 	$(VIVADO) -mode batch -source scripts/build_overlay.tcl \
 		-tclargs "$(OVERLAY_DIR)" "$(BUILD_DIR)/overlay" "llnn_bd" "$(JOBS)" "$(SV_DIR)"
+
+build_reconfig:
+	@echo "Building reconfigurable LLNN overlay (PYNQ-Z2)"
+	@test -d data/overlay/$(MODEL) || (echo "ERROR: data/overlay/$(MODEL) not found. Run: python hdl/generate_overlay.py --model $(MODEL)"; exit 1)
+	$(VIVADO) -mode batch -source scripts/build_overlay.tcl \
+		-tclargs "$(OVERLAY_DIR)" "$(BUILD_DIR)/reconfig" "llnn_bd" "$(JOBS)" "data/overlay/$(MODEL)"
 
 clean:
 ifdef MODEL

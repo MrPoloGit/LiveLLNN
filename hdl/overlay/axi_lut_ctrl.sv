@@ -217,6 +217,10 @@ module axi_lut_ctrl #(
   assign S_AXI_RDATA   = s_axi_rdata_reg;
   assign S_AXI_RRESP   = 2'b00;
 
+  // Output pipeline register to break long combinational path
+  logic [NET_OUTPUTS-1:0] net_o_reg;
+  logic [1:0] output_read_wait_cnt = 2'd0;
+
   always_comb begin
     mem_rd_en = 1'b0;
     s_axi_arready_next = 1'b0;
@@ -225,15 +229,41 @@ module axi_lut_ctrl #(
     if (S_AXI_ARVALID
         && (!S_AXI_RVALID || S_AXI_RREADY)
         && (!s_axi_arready_reg)) begin
-      s_axi_arready_next = 1'b1;
-      s_axi_rvalid_next  = 1'b1;
-      mem_rd_en           = 1'b1;
+      
+      // If reading the neural network output, delay RVALID by 3 cycles
+      if (S_AXI_ARADDR == ADDR_OUTPUT) begin
+        if (output_read_wait_cnt == 2'd3) begin
+           s_axi_arready_next = 1'b1;
+           s_axi_rvalid_next  = 1'b1;
+           mem_rd_en           = 1'b1;
+        end
+      end else begin
+        s_axi_arready_next = 1'b1;
+        s_axi_rvalid_next  = 1'b1;
+        mem_rd_en           = 1'b1;
+      end
     end
   end
 
   always_ff @(posedge S_AXI_ACLK) begin
     s_axi_arready_reg <= s_axi_arready_next;
     s_axi_rvalid_reg  <= s_axi_rvalid_next;
+
+  // Pipeline the raw combinational net_o from the LUT array
+  // (Note: net_o now comes from a highly pipelined argmax, 
+  // but we still register it cleanly to AXI clock domain)
+  net_o_reg <= net_o;
+
+  // Manage the 3-cycle wait state for output read to accommodate the Output Header pipelines
+  if (S_AXI_ARVALID && (!S_AXI_RVALID || S_AXI_RREADY) && !s_axi_arready_reg && S_AXI_ARADDR == ADDR_OUTPUT) begin
+      if (output_read_wait_cnt < 2'd3) begin
+          output_read_wait_cnt <= output_read_wait_cnt + 1'b1;
+      end else begin
+          output_read_wait_cnt <= '0;
+      end
+  end else begin
+      output_read_wait_cnt <= '0;
+  end
 
     if (mem_rd_en) begin
       if (S_AXI_ARADDR == ADDR_W'(16'h8000)) begin
@@ -245,7 +275,8 @@ module axi_lut_ctrl #(
       end else if (S_AXI_ARADDR >= ADDR_INPUT_BASE && S_AXI_ARADDR < ADDR_OUTPUT) begin
         s_axi_rdata_reg <= input_regs[(S_AXI_ARADDR - ADDR_INPUT_BASE) >> 2];
       end else if (S_AXI_ARADDR == ADDR_OUTPUT) begin
-        s_axi_rdata_reg <= {{(DATA_W - NET_OUTPUTS){1'b0}}, net_o};
+        // Return the pipelined value
+        s_axi_rdata_reg <= {{(DATA_W - NET_OUTPUTS){1'b0}}, net_o_reg};
       end else begin
         s_axi_rdata_reg <= 32'hDEAD_BEEF;
       end

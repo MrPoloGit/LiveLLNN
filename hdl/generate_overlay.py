@@ -296,11 +296,19 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes,
         c_width = "$clog2(CLASS_OUTS+1)"
         for i in range(number_of_classes):
             f.write(f"\tlogic [{c_width}-1:0] C{i};\n")
+            f.write(f"\tlogic [{c_width}-1:0] C_reg{i};\n")
         for i in range(number_of_classes - 2):
             f.write(f"\tlogic [{c_width}-1:0] max{i};\n")
         for i in range(number_of_classes - 1):
             f.write(f"\tlogic idx{i};\n")
-        f.write("\n")
+        
+        f.write("\t// ---- Pipeline Registers for Output Header ----\n")
+        f.write(f"\tlogic [L{number_of_layers-1}_NEURONS-1:0] F_L_last_reg;\n")
+        f.write("\talways_ff @(posedge clk) begin\n")
+        f.write(f"\t\tF_L_last_reg <= F_L{number_of_layers-1};\n")
+        for i in range(number_of_classes):
+            f.write(f"\t\tC_reg{i} <= C{i};\n")
+        f.write("\tend\n\n")
 
         # AXI controller instance
         f.write("\t// ---- AXI Configuration Controller ----\n")
@@ -355,17 +363,17 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes,
             hi = num_neurons[-1] - 1 - outputs_per_class * i
             lo = num_neurons[-1] - outputs_per_class * (i + 1)
             f.write(f"\tassign C{number_of_classes - i - 1} = "
-                    f"popcount(F_L{number_of_layers-1}[{hi}:{lo}]);\n")
+                    f"popcount(F_L_last_reg[{hi}:{lo}]);\n")
         f.write("\n")
 
-        # Comparator chain (unchanged)
+        # Comparator chain (reads from C_reg array instead of C combinational signals)
         f.write("\t// ---- Comparator reduction chain ----\n")
         for i in range(number_of_classes - 1):
             f.write(f"\tcomparator CMP{i} (\n")
             if i == 0:
-                f.write(f"\t\t.in1 (C0),\n\t\t.in2 (C1),\n")
+                f.write(f"\t\t.in1 (C_reg0),\n\t\t.in2 (C_reg1),\n")
             else:
-                f.write(f"\t\t.in1 (max{i-1}),\n\t\t.in2 (C{i+1}),\n")
+                f.write(f"\t\t.in1 (max{i-1}),\n\t\t.in2 (C_reg{i+1}),\n")
             if i < number_of_classes - 2:
                 f.write(f"\t\t.max (max{i}),\n")
             else:

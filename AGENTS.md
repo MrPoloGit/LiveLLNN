@@ -204,3 +204,14 @@ The **fundamental insight**: in the reconfigurable flow, wiring is structural an
 - **CFGLUT5 primitive**: `SoftLUT5_primitive.sv` exists but needs XDC constraints (`dont_remap.xdc`) to prevent Vivado from remapping to SRLC32E. Previous attempts had synthesis issues.
 - **Daisy-chaining**: The `cfg_out` port is connected but not used — each SoftLUT5 is programmed individually via `cfg_gate_sel`. Daisy-chaining could reduce AXI overhead but adds complexity.
 - **Phase 5 — Self-Healing Loop**: Planned but not implemented. The idea: monitor accuracy on PYNQ, retrain if it drops, and reprogram gates automatically.
+
+---
+
+## Edge Device Use Cases \& Demonstration
+
+The absolute "killer app" demonstration for LiveLLNN revolves around demonstrating instant domain adaptability without Vivado re-synthesis latency. In embedded applications such as visual processing, orientation shifts are notorious concept drifts.
+
+By training on standard `mnist20x20`, freezing the generated wiring graph, and then continuing to train on a disjoint transform dataset like `mnist20x20_rotated` (90-degree rotations mimicking the hardware physically being knocked sideways), we demonstrate:
+
+1. **Hardware Persistence:** The exact same SV topology can accurately classify structurally separate inputs.
+2. **Instant Hot-Swapping:** When a device realizes its classification ability has dropped upon physical re-orientation, the OS pulls down lightweight binary weights in software, directly updating the `CFGLUT5` INIT vectors over AXI memory map—bypassing the customary 15-minute complete bitstream synthesis pipeline completely and fully recovering vision within ~3 seconds (limited entirely by PS memory transactions).

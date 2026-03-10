@@ -37,8 +37,13 @@ class MNIST20Transform:
         return value1, value2
 
 
-def load_mnist_dataset(batch_size, mnist20=False):
+def load_mnist_dataset(batch_size, mnist20=False, rotate_90=False):
     trans = [transforms.ToTensor()]
+    
+    if rotate_90:
+        # Rotate 90 degrees left (k=1) on the H, W dimensions
+        trans.append(transforms.Lambda(lambda x: torch.rot90(x, k=1, dims=[1, 2])))
+        
     if mnist20:
         trans.append(MNIST20Transform())
     transform = transforms.Compose(trans)

@@ -264,7 +264,7 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes,
         f.write("\tinput  logic        rst_n,\n")
         f.write("\n")
         f.write("\t// AXI-Lite Slave (directly exposed for block design)\n")
-        f.write("\tinput  logic [13:0] S_AXI_AWADDR,\n")
+        f.write("\tinput  logic [15:0] S_AXI_AWADDR,\n")
         f.write("\tinput  logic        S_AXI_AWVALID,\n")
         f.write("\toutput logic        S_AXI_AWREADY,\n")
         f.write("\tinput  logic [31:0] S_AXI_WDATA,\n")
@@ -274,7 +274,7 @@ def gen_top_file(sv_path, number_of_layers, number_of_classes,
         f.write("\toutput logic [1:0]  S_AXI_BRESP,\n")
         f.write("\toutput logic        S_AXI_BVALID,\n")
         f.write("\tinput  logic        S_AXI_BREADY,\n")
-        f.write("\tinput  logic [13:0] S_AXI_ARADDR,\n")
+        f.write("\tinput  logic [15:0] S_AXI_ARADDR,\n")
         f.write("\tinput  logic        S_AXI_ARVALID,\n")
         f.write("\toutput logic        S_AXI_ARREADY,\n")
         f.write("\toutput logic [31:0] S_AXI_RDATA,\n")
@@ -501,7 +501,7 @@ def gen_overlay(model, name):
     export_wiring_map(sv_path, wiring_layers, num_neurons, lut_size,
                       number_of_inputs)
 
-    print(f"\n[overlay] ✅ Overlay HDL written to: {sv_path}/")
+    print(f"\n[overlay] Overlay HDL written to: {sv_path}/")
     return sv_path
 
 

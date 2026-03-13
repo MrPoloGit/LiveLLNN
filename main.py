@@ -25,7 +25,7 @@ def get_args():
     # clean
     parser.add_argument("--clean", choices=["models", "data", "all"], help="Delete generated artifacts. Use with --name to delete only that model's outputs.")
     
-    parser.add_argument('--dataset', type=str, choices=['mnist', 'mnist20x20', 'cifar10-3', 'cifar10-31', 'adult', 'breast', 'jsc'], default="mnist20x20", help='Dataset to use')
+    parser.add_argument('--dataset', type=str, choices=['mnist', 'mnist20x20', 'mnist20x20_rotated', 'cifar10-3', 'cifar10-31', 'adult', 'breast', 'jsc'], default="mnist20x20", help='Dataset to use')
     parser.add_argument('--seed', type=int, default=0, help='seed (default: 0)')
     parser.add_argument('--batch-size', '-bs', type=int, default=128, help='batch size (default: 128)')
     parser.add_argument('--learning-rate', '-lr', type=float, default=0.01, help='learning rate (default: 0.01)')
@@ -48,6 +48,12 @@ def get_args():
     parser.add_argument('--train', action='store_true', help='Train model.')
     parser.add_argument('--load', action='store_true', help='Load model')
     parser.add_argument('--infer_time', action='store_true', help='Measure inference time')
+
+    # Fixed-wiring for reconfigurable overlay
+    parser.add_argument('--export-wiring', type=str, default=None,
+                        help='Export connectivity to JSON file after model creation (e.g. wiring/topology.json)')
+    parser.add_argument('--wiring', type=str, default=None,
+                        help='Load frozen wiring from JSON file (train with same topology as another model)')
     return parser.parse_args()
 
 
@@ -110,10 +116,12 @@ def evaluation(model, loader, device, mode=False):
 
 
 def load_dataset(args):
-    if "mnist20x20" in args.dataset:
-        train_loader, test_loader, input_dim_dataset, num_classes = load_mnist_dataset(args.batch_size, mnist20=True)
+    if "mnist20x20_rotated" in args.dataset:
+        train_loader, test_loader, input_dim_dataset, num_classes = load_mnist_dataset(args.batch_size, mnist20=True, rotate_90=True)
+    elif "mnist20x20" in args.dataset:
+        train_loader, test_loader, input_dim_dataset, num_classes = load_mnist_dataset(args.batch_size, mnist20=True, rotate_90=False)
     elif "mnist" in args.dataset:
-        train_loader, test_loader, input_dim_dataset, num_classes = load_mnist_dataset(args.batch_size, mnist20=False)
+        train_loader, test_loader, input_dim_dataset, num_classes = load_mnist_dataset(args.batch_size, mnist20=False, rotate_90=False)
     elif "adult" in args.dataset:
         train_set = AdultDataset('./data-uci', split='train', download=True, with_val=False)
         test_set = AdultDataset('./data-uci', split='test', with_val=False)
@@ -232,7 +240,13 @@ if __name__ == "__main__":
             weights_only=False
         )
     else:
-        model = LUTNN(args.luts_per_layer, args.num_layers, args.lut_size, input_dim_dataset, num_classes, device, tau=args.tau)
+        model = LUTNN(args.luts_per_layer, args.num_layers, args.lut_size, input_dim_dataset, num_classes,
+                      device, tau=args.tau, wiring_file=args.wiring)
+
+    # Export wiring if requested (before training, so the topology is captured)
+    if args.export_wiring:
+        model.export_wiring(args.export_wiring)
+
     if args.train:
         model = train(model, train_loader, test_loader, args, device)
     else:

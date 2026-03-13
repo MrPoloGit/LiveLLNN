@@ -83,13 +83,20 @@ class LUTLayer(torch.nn.Module):
 
         return output
 
+    def set_connections(self, indices):
+        """
+        Load pre-defined connectivity (for frozen wiring).
+        :param indices: Tensor of shape (lut_input, n_luts) with input indices
+        """
+        self.indices = indices
+
     def get_connections(self, input_dim, lut_input, n_luts, connections, device):
         """
         Get LUT connections.
         :param input_dim: Number of input dimensions
         :param lut_input: Number of inputs per LUT
         :param n_luts: Number of LUTs
-        :param connections: Method for initializing connectivity
+        :param connections: Method for initializing connectivity ('random' or 'frozen')
         :param device: Device to place the tensors
         :return: Connection indices
         """
@@ -98,6 +105,9 @@ class LUTLayer(torch.nn.Module):
             conn = torch.randperm(input_dim)[conn]
             conn = conn.reshape(lut_input, n_luts).to(device)
             return conn
+        elif connections == 'frozen':
+            # Caller must use set_connections() to inject frozen wiring
+            raise ValueError("Frozen connections require calling set_connections() after construction.")
         else:
             raise ValueError("Invalid connection method: {}".format(connections))
 

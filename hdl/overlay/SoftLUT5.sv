@@ -1,12 +1,11 @@
 // -------------------------------------------------------------------------------------
-// UNTESTED GEMINI/ANTIGRAVITY CODE: DO NOT USE FOR NOW.
 // SoftLUT5.sv — Reconfigurable Logic Cell for LLNN Overlay
-// Wraps the Xilinx CFGLUT5 primitive (available in SLICEM sites on 7-Series)
+// Behavioral implementation: register + MUX (same interface as CFGLUT5)
 //
 // Usage:
 //   - lut_in[4:0] are the 5 data inputs (tie I4=0 for LUT4 compatibility)
-//   - lut_out is the combinational LUT output (O6)
-//   - To reprogram: assert cfg_ce, clock in 32 bits on cfg_data (LSB first)
+//   - lut_out is the combinational LUT output
+//   - To reprogram: assert cfg_ce, clock in 32 bits on cfg_data (MSB first)
 //   - cfg_out carries the displaced bit (for optional daisy-chaining)
 // -------------------------------------------------------------------------------------
 
@@ -23,22 +22,20 @@ module SoftLUT5 (
     output logic cfg_out
 );
 
-  // Prevent Vivado from optimizing away the reconfigurable LUT
-  (* dont_touch = "true", LOCK_PINS = "all" *)
-  CFGLUT5 #(
-      .INIT(32'h0000_0000)  // Power-on default (overwritten at runtime by PS)
-  ) cfglut_inst (
-      .O5 (),           // LUT4 output (unused — we use O6 for full LUT5)
-      .O6 (lut_out),    // LUT5 output: INIT[{I4,I3,I2,I1,I0}]
-      .I0 (lut_in[0]),
-      .I1 (lut_in[1]),
-      .I2 (lut_in[2]),
-      .I3 (lut_in[3]),
-      .I4 (lut_in[4]),  // Tie to 0 externally for LUT4 mode
-      .CDI(cfg_data),   // Configuration Data In  (serial, LSB first)
-      .CDO(cfg_out),    // Configuration Data Out (daisy-chain)
-      .CE (cfg_ce),     // Configuration Enable
-      .CLK(clk)         // Configuration Clock
-  );
+  // Truth table register (Vivado infers as distributed RAM / LUTRAM)
+  logic [31:0] init_reg = 32'hDEAD_BEEF;
+
+  // Combinational LUT lookup
+  assign lut_out = init_reg[lut_in];
+
+  // Displaced MSB for daisy-chaining
+  assign cfg_out = init_reg[31];
+
+  // Serial shift-in: MSB first, same protocol as CFGLUT5
+  always_ff @(posedge clk) begin
+    if (cfg_ce) begin
+      init_reg <= {init_reg[30:0], cfg_data};
+    end
+  end
 
 endmodule
